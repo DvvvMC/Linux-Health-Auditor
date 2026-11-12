@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Generated reports (may contain sensitive system data)
+reports/*.md
+reports/*.json
+
+# Operating system files
+.DS_Store
