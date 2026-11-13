@@ -21,7 +21,6 @@ def run_df() -> str:
     """Run df safely and return its output as text."""
     command = [
         "df",
-        "-P",
         "--output=source,fstype,size,used,avail,pcent,target",
         "-B1",
     ]
