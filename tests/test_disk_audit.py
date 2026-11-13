@@ -106,6 +106,7 @@ class CollectDiskInfoTests(unittest.TestCase):
         args, kwargs = mock_run.call_args
         self.assertEqual(args[0][0], "df")
         self.assertIn("--output=source,fstype,size,used,avail,pcent,target", args[0])
+        self.assertNotIn("-P", args[0])
         self.assertNotIn("shell", kwargs)
         self.assertTrue(kwargs["check"])
         self.assertTrue(kwargs["capture_output"])
