@@ -6,7 +6,7 @@ incrementally and collect information without modifying the host system.
 
 import subprocess
 
-from disk_audit import collect_disk_info
+from disk_audit import collect_block_devices, collect_disk_info
 from system_info import collect_system_info
 
 
@@ -21,10 +21,11 @@ def bytes_to_gib(value: int) -> float:
 
 
 def main() -> None:
-    """Collect and display system and filesystem information."""
+    """Collect and display system, filesystem, and block-device information."""
     try:
         info = collect_system_info()
         filesystems = collect_disk_info()
+        block_devices = collect_block_devices()
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"System audit failed: {error}")
         return
@@ -62,7 +63,7 @@ def main() -> None:
         f"({kib_to_gib(info.memory_available_kib):.2f} GiB)"
     )
 
-    print("\n[Disk / Filesystem]")
+    print("\n[Disk / Filesystem Capacity]")
     for filesystem in filesystems:
         usage = (
             f"{filesystem.usage_percent}%"
@@ -85,6 +86,27 @@ def main() -> None:
             f"({bytes_to_gib(filesystem.available_bytes):.2f} GiB)"
         )
         print(f"Usage:             {usage}")
+        print("-" * 52)
+
+    print("\n[Block Devices / Partitions]")
+    for device in block_devices:
+        print(f"Name:              {device.name}")
+        print(f"Path:              {device.path}")
+        print(f"Type:              {device.device_type}")
+        print(
+            f"Parent:            {device.parent_path or 'None (top-level device)'}"
+        )
+        print(
+            f"Size:              {device.size_bytes:,} bytes "
+            f"({bytes_to_gib(device.size_bytes):.2f} GiB)"
+        )
+        print(f"Read-only:         {'Yes' if device.read_only else 'No'}")
+        print(f"Transport:         {device.transport or 'Unknown / not reported'}")
+        print(f"Filesystem:        {device.filesystem or 'None'}")
+        print(f"UUID:              {device.uuid or 'None'}")
+        print(
+            f"Mount points:      {', '.join(device.mountpoints) if device.mountpoints else 'None'}"
+        )
         print("-" * 52)
 
     print("\n" + "=" * 52)
