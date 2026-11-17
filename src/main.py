@@ -8,6 +8,7 @@ import subprocess
 
 from disk_audit import collect_block_devices, collect_disk_info
 from service_audit import collect_services
+from user_audit import collect_user_audit
 from system_info import collect_system_info
 
 
@@ -28,6 +29,7 @@ def main() -> None:
         filesystems = collect_disk_info()
         block_devices = collect_block_devices()
         services = collect_services()
+        user_audit = collect_user_audit()
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"System audit failed: {error}")
         return
@@ -125,6 +127,52 @@ def main() -> None:
         print(f"Unit file state:   {service.unit_file_state}")
         print(f"Unit file preset:  {service.unit_file_preset or 'Not reported'}")
         print(f"Fragment path:     {service.fragment_path or 'Not reported'}")
+        print("-" * 52)
+
+    print("\n[Local Users]")
+    print(f"Total users:         {len(user_audit.users)}")
+    print(f"UID 0 accounts:      {len(user_audit.uid_zero_users)}")
+    for user in user_audit.users:
+        print(f"Username:            {user.username}")
+        print(f"UID / Primary GID:   {user.uid} / {user.primary_gid}")
+        print(f"Primary group:       {user.primary_group or 'Unknown'}")
+        print(f"Supplementary groups: {', '.join(user.supplementary_groups) or 'None'}")
+        print(f"Home:                {user.home}")
+        print(f"Shell:               {user.shell}")
+        if user.is_uid_zero:
+            print("Security note:       UID 0 account")
+        print("-" * 52)
+
+    print("\n[ Sudo Group ]")
+    sudo_members = user_audit.sudo_group_members
+    print(f"Members:             {len(sudo_members)}")
+    for user in sudo_members:
+        print(f"- {user.username} (UID {user.uid})")
+    print(
+        "Unknown group members: "
+        + (", ".join(user_audit.unknown_sudo_members) or "None")
+    )
+
+    print("\n[ Sudoers Configuration ]")
+    for sudoers_file in user_audit.sudoers_files:
+        print(f"Path:                {sudoers_file.path}")
+        print(f"Exists:              {'Yes' if sudoers_file.exists else 'No'}")
+        print(f"Readable:            {'Yes' if sudoers_file.readable else 'No'}")
+        print(f"Owner UID:           {sudoers_file.owner_uid if sudoers_file.owner_uid is not None else 'Unknown'}")
+        print(f"Mode:                {sudoers_file.mode or 'Unknown'}")
+        if sudoers_file.contains_nopasswd is None:
+            print("NOPASSWD detected:   Unknown")
+        else:
+            print(
+                "NOPASSWD detected:   "
+                + ("Yes" if sudoers_file.contains_nopasswd else "No")
+            )
+        print(
+            "Include directives:  "
+            + (", ".join(sudoers_file.include_directives) or "None")
+        )
+        if sudoers_file.read_error:
+            print(f"Read status:         {sudoers_file.read_error}")
         print("-" * 52)
 
     print("\n" + "=" * 52)
