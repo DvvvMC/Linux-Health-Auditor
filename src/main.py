@@ -7,6 +7,7 @@ incrementally and collect information without modifying the host system.
 import subprocess
 
 from disk_audit import collect_block_devices, collect_disk_info
+from service_audit import collect_services
 from system_info import collect_system_info
 
 
@@ -21,11 +22,12 @@ def bytes_to_gib(value: int) -> float:
 
 
 def main() -> None:
-    """Collect and display system, filesystem, and block-device information."""
+    """Collect and display system, disk, and service audit information."""
     try:
         info = collect_system_info()
         filesystems = collect_disk_info()
         block_devices = collect_block_devices()
+        services = collect_services()
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"System audit failed: {error}")
         return
@@ -107,6 +109,22 @@ def main() -> None:
         print(
             f"Mount points:      {', '.join(device.mountpoints) if device.mountpoints else 'None'}"
         )
+        print("-" * 52)
+
+    failed_services = [service for service in services if service.is_failed]
+    print("\n[Systemd Services]")
+    print(f"Total service records: {len(services)}")
+    print(f"Failed services:       {len(failed_services)}")
+
+    for service in services:
+        print(f"Service:           {service.name}")
+        print(f"Description:       {service.description or 'Not reported'}")
+        print(f"Load state:        {service.load_state}")
+        print(f"Active state:      {service.active_state}")
+        print(f"Sub state:         {service.sub_state}")
+        print(f"Unit file state:   {service.unit_file_state}")
+        print(f"Unit file preset:  {service.unit_file_preset or 'Not reported'}")
+        print(f"Fragment path:     {service.fragment_path or 'Not reported'}")
         print("-" * 52)
 
     print("\n" + "=" * 52)
