@@ -3,6 +3,7 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from src.user_audit import (
     collect_user_audit,
@@ -178,6 +179,26 @@ class CollectUserAuditTests(unittest.TestCase):
 
         self.assertEqual(result.sudo_group_members, ())
         self.assertEqual(result.unknown_sudo_members, ())
+
+    @patch("src.user_audit.Path.iterdir", side_effect=PermissionError("permission denied"))
+    def test_reports_unreadable_sudoers_directory(self, _mock_iterdir):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "passwd").write_text(PASSWD)
+            (root / "group").write_text(GROUP)
+            (root / "sudoers").write_text("")
+            sudoers_dir = root / "sudoers.d"
+            sudoers_dir.mkdir()
+
+            result = collect_user_audit(
+                root / "passwd", root / "group", root / "sudoers", sudoers_dir
+            )
+
+        directory_record = next(
+            item for item in result.sudoers_files if item.path.endswith("sudoers.d")
+        )
+        self.assertFalse(directory_record.readable)
+        self.assertIn("permission denied", directory_record.read_error)
 
     def test_primary_sudo_group_membership_is_included(self):
         with tempfile.TemporaryDirectory() as directory:
