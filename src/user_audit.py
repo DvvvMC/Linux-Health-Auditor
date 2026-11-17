@@ -265,12 +265,35 @@ def collect_user_audit(
     )
 
     sudoers_paths = [sudoers_path]
+    directory_error: SudoersFileInfo | None = None
     if sudoers_dir.is_dir():
-        sudoers_paths.extend(
-            sorted(path for path in sudoers_dir.iterdir() if path.is_file())
-        )
+        try:
+            sudoers_paths.extend(
+                sorted(path for path in sudoers_dir.iterdir() if path.is_file())
+            )
+        except OSError as error:
+            try:
+                metadata = sudoers_dir.stat()
+                owner_uid = metadata.st_uid
+                mode = f"{stat.S_IMODE(metadata.st_mode):04o}"
+            except OSError:
+                owner_uid = None
+                mode = None
+            directory_error = SudoersFileInfo(
+                path=str(sudoers_dir),
+                exists=True,
+                readable=False,
+                owner_uid=owner_uid,
+                mode=mode,
+                contains_nopasswd=None,
+                include_directives=(),
+                read_error=str(error),
+            )
 
-    sudoers_files = tuple(inspect_sudoers_file(path) for path in sudoers_paths)
+    sudoers_records = [inspect_sudoers_file(path) for path in sudoers_paths]
+    if directory_error is not None:
+        sudoers_records.append(directory_error)
+    sudoers_files = tuple(sudoers_records)
 
     sudo_group = next((group for group in groups if group.name == "sudo"), None)
     known_users = {user.username for user in users}
